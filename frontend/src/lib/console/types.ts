@@ -28,6 +28,7 @@ export type NavIcon =
   | "dashboard"
   | "workflows"
   | "verifications"
+  | "investigator"
   | "explorer"
   | "api-keys"
   | "webhooks"

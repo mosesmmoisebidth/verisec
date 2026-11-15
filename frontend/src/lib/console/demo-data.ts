@@ -319,6 +319,7 @@ export const DEMO_CONSOLE: ConsoleData = {
           { label: "Dashboard", icon: "dashboard", href: "/dashboard" },
           { label: "Workflows", icon: "workflows", href: "/workflows" },
           { label: "Verifications", icon: "verifications", href: "/verifications" },
+          { label: "Investigator", icon: "investigator", href: "/investigator" },
           { label: "AML Explorer", icon: "explorer", href: "/explorer" },
         ],
       },
