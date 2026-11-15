@@ -1,0 +1,91 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files
+.env*
+
+# ...but these carry no secrets, so they are committed:
+#   .env.example      documents every variable
+#   .env.development  loaded by `next dev` only
+# Do NOT un-ignore .env.local: Next loads it in BOTH dev and build and it
+# wins over the files above, so a dev value there poisons a prod build.
+!.env.example
+!.env.development
+
+# ...but these three carry no secrets, so they are committed:
+#   .env.example      documents every variable
+#   .env.development  loaded by `next dev` only
+#   .env.production   loaded by `next build` only
+# Do NOT un-ignore .env.local: Next loads it in BOTH dev and build and it wins
+# over the two above, so a dev value left there silently poisons a production
+# build. Keep it for personal machine-specific overrides only.
+!.env.production
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+
+# stray build artifacts
+out.zip
+*.zip
+
+# local deploy credentials (never commit)
+.deploy.env
+
+# reference material (not deployed)
+placeholder_images/
+verivision-updates/
+
+# responsive test artifacts (contain sample PII)
+scripts/mock/
+scripts/shots/
+
+# local dev logs
+_frontlog.txt
+*.log
+
+# AI tooling (keep out of the repo)
+CLAUDE.md
+AGENTS.md
+VERIVISION_REDESIGN_PROMPT.md
+
+# AI assistant / agent tooling — keep local, never publish
+.claude/
+.claude-mem/
+.cursor/
+.cursorrules
+.aider*
+.playwright-mcp/

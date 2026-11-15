@@ -1,0 +1,38 @@
+# Caching rules for the static export on LiteSpeed/Apache (cPanel).
+#
+# Why this exists: by default the host sends no Cache-Control for Next.js assets,
+# so the browser re-validates every JS/CSS chunk on each navigation (an extra
+# network round-trip per click). That makes clicking a link feel like the page
+# is "compiling". Next's files under /_next/static/ have content-hashed names, so
+# they are safe to cache forever — a new build produces new filenames.
+
+<IfModule mod_headers.c>
+  # Hashed build assets: cache hard, never revalidate.
+  <FilesMatch "\.(js|css|woff2?|ttf|otf|eot)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+
+  # Images: cache a week (these are not hashed, but rarely change).
+  <FilesMatch "\.(png|jpe?g|gif|svg|webp|avif|ico)$">
+    Header set Cache-Control "public, max-age=604800"
+  </FilesMatch>
+
+  # HTML and the runtime backend locator must always be fresh so deploys and
+  # API-URL edits take effect immediately.
+  <FilesMatch "(\.html|config\.js)$">
+    Header set Cache-Control "no-cache, must-revalidate"
+  </FilesMatch>
+</IfModule>
+
+# Belt-and-braces: long expiry for the immutable asset folder.
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType application/javascript "access plus 1 year"
+  ExpiresByType text/css "access plus 1 year"
+  ExpiresByType font/woff2 "access plus 1 year"
+</IfModule>
+
+# Compress text assets (LiteSpeed honours this too).
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json image/svg+xml
+</IfModule>

@@ -1,0 +1,66 @@
+# Auto-deploy this static frontend to Namecheap cPanel over secure FTP.
+#
+# Flow:  git push  ->  GitHub builds the Next.js static export  ->  uploads
+# out/ to the cPanel document root, deleting files removed since last deploy.
+# You never touch File Manager again.
+#
+# ONE-TIME SETUP (GitHub repo -> Settings -> Secrets and variables -> Actions):
+#   "Secrets" tab, add:
+#     FTP_SERVER     the FTP hostname from cPanel (e.g. ftp.mmose.tech or the
+#                    server IP shown in cPanel -> "FTP Accounts")
+#     FTP_USERNAME   your cPanel / FTP username
+#     FTP_PASSWORD   your cPanel / FTP password
+#   "Variables" tab, add:
+#     FTP_REMOTE_DIR the document root of verivision.mmose.tech (cPanel ->
+#                    Domains -> "Document Root"). MUST end with a slash, e.g.
+#                    /verivision.mmose.tech/   or   /public_html/verivision.mmose.tech/
+#
+# Make sure Actions is allowed: Settings -> Actions -> General ->
+#   "Allow all actions and reusable workflows".
+
+name: Deploy frontend
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {} # run manually from the Actions tab
+
+concurrency:
+  group: deploy-frontend
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build static export
+        env:
+          NEXT_EXPORT: "1"
+        run: pnpm build
+
+      - name: Deploy to cPanel via FTPS
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps # explicit TLS on port 21; Namecheap supports this
+          local-dir: ./out/
+          server-dir: ${{ vars.FTP_REMOTE_DIR }}
