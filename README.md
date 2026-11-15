@@ -50,8 +50,7 @@ Open `/investigator/`. For a local preview without the auth backend, add
 - The agent loop is real: each turn the model chooses the next tool, the tool
   runs real logic over the case data, and the observation is fed back until
   the model returns a decision. Steps stream to the UI as Server-Sent Events.
-- Model: any OpenRouter chat model (`INVESTIGATOR_MODEL`), default
-  `nvidia/nemotron-3-ultra-550b-a55b:free`.
+- Model: configurable with `INVESTIGATOR_MODEL` (any OpenRouter chat model).
 - Case data lives in `frontend/src/lib/investigator/specimen.json`, shared by
   the UI and the agent so they never drift.
 
