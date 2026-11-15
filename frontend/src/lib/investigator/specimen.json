@@ -1,0 +1,41 @@
+{
+  "cases": [
+    {
+      "id": "CASE-2041",
+      "kind": "Loan application",
+      "applicant": "Dmitri Volkov",
+      "summary": "Personal loan, EUR 25,000. ID, bank statement and pay stub on file.",
+      "documents": {
+        "id_card": { "type": "National ID", "name": "Dmitri Volkov", "dob": "1986-03-11", "doc_no": "P8831204" },
+        "bank_statement": { "holder": "Dmitri Volkov", "avg_monthly_credit": 3100, "stated_on_app": 9800 },
+        "pay_stub": { "employer": "Northwind Ltd", "net_monthly": 3050 }
+      }
+    },
+    {
+      "id": "CASE-2042",
+      "kind": "Rental application",
+      "applicant": "Grace Miller",
+      "summary": "Apartment lease. ID, bank statement and pay stub on file.",
+      "documents": {
+        "id_card": { "type": "Passport", "name": "Grace Miller", "dob": "1991-07-22", "doc_no": "X4471902" },
+        "bank_statement": { "holder": "Grace Miller", "avg_monthly_credit": 5200, "stated_on_app": 5400 },
+        "pay_stub": { "employer": "Cedar & Co", "net_monthly": 5250 }
+      }
+    },
+    {
+      "id": "CASE-2043",
+      "kind": "Insurance claim",
+      "applicant": "Samuel Okoro",
+      "summary": "Income-protection claim. ID and bank statement on file; pay stub missing.",
+      "documents": {
+        "id_card": { "type": "National ID", "name": "Samuel Okoro", "dob": "1983-12-02", "doc_no": "A2290517" },
+        "bank_statement": { "holder": "S. Okoro-Adewale", "avg_monthly_credit": 4100, "stated_on_app": 4300 }
+      }
+    }
+  ],
+  "watchlist": [
+    { "name": "dmitri volkov", "list": "OFAC SDN (SPECIMEN)", "program": "RUSSIA-EO14024" },
+    { "name": "ivan petrov", "list": "EU Consolidated (SPECIMEN)", "program": "SYRIA" },
+    { "name": "chen wei", "list": "UK HMT (SPECIMEN)", "program": "DPRK" }
+  ]
+}
