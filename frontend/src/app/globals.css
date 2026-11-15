@@ -1,0 +1,996 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* Tailwind v4 leaves native <button> on the default (arrow) cursor. Restore the
+   pointer (hand) on everything that is actually clickable, so no control reads as
+   dead. Disabled controls keep the default cursor. */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  label[for],
+  summary {
+    cursor: pointer;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Font fallback — prevents layout shift while Google Sans Flex loads */
+/*                                                                    */
+/*  Metrics measured in-browser (canvas TextMetrics @ 100px) against   */
+/*  the real font:                                                    */
+/*    Google Sans Flex  width 3578.6  ascent 97  descent 29           */
+/*    Arial             width 3557.7  -> ratio 100.59%  (near perfect) */
+/*    system-ui         width 3389.8  -> ratio 105.57%  (5.6% shift)   */
+/*                                                                    */
+/*  So the fallback is Arial-based, not system-ui. Liberation Sans is  */
+/*  metric-compatible with Arial and covers Linux.                    */
+/* ------------------------------------------------------------------ */
+@font-face {
+  font-family: "Google Sans Flex Fallback";
+  src:
+    local("Arial"), local("Helvetica Neue"), local("Helvetica"),
+    local("Liberation Sans");
+  size-adjust: 100.59%;
+  ascent-override: 97%;
+  descent-override: 29%;
+  line-gap-override: 0%;
+  font-display: swap;
+}
+
+/* ------------------------------------------------------------------ */
+/*  VeriSec Labs design tokens                                        */
+/*  Source of truth: Figma "VeriSec Labs" file                        */
+/*                                                                    */
+/*  Brand palette                                                     */
+/*    lime    #BFEB58  primary actions, highlights                    */
+/*    pine    #0E3228  deep green: headings, dark panels, dark pills  */
+/*    surface #F2F2F2  light grey panels and cards                    */
+/*    cream   #F5F9EB  auth page background                           */
+/*    ink     #231F20  logo / near-black                              */
+/* ------------------------------------------------------------------ */
+
+
+/* ============================================================================
+   MERGED 2026-08-21 — the marketing site and the console are now one app.
+
+   Two token systems live here on purpose and must not be flattened:
+
+     · `@theme inline` below is the MARKETING system (verisec-web). It carries
+       the shadcn aliases, the animation keyframe names and the site's radii.
+     · `@theme` after it is the CONSOLE + APPLICANT FLOW system, every value
+       lifted from a Figma frame.
+
+   SIX NAMES COLLIDED and each was resolved rather than left to chance, because
+   Tailwind resolves one utility name against both blocks and the LAST
+   definition silently wins — the failure mode that has already cost this
+   project three bugs (`--color-body`, `--text-panel`, and nearly `--text-card`):
+
+     · `--color-card` was deleted. The marketing site never used `bg-card`, and
+       keeping it would have made `text-card` — the console's 13.07px card
+       heading — resolve to a COLOUR again. Third time; see the rule below.
+     · `--color-card-foreground`, `--color-muted`, `--color-muted-foreground`
+       and `--color-destructive` were deleted for the same reason: zero uses on
+       the marketing side, real uses on the console side.
+     · `--color-panel`, `--color-hairline`, `--radius-card` and `--radius-panel`
+       exist in BOTH with different values and real uses on both sides, so the
+       marketing ones were renamed `--color-site-panel`, `--color-site-line`,
+       `--radius-site-card` and `--radius-site-panel`. Nine call sites moved;
+       neither design lost a value.
+
+   `--color-pine`, `--color-lime`, `--color-ink` and `--color-cream` were
+   identical in both and are declared once.
+   ============================================================================ */
+@theme inline {
+  /* Brand colors */
+  --color-lime: #bfeb58;
+  --color-pine: #0e3228;
+  --color-surface: #f2f2f2;
+  --color-cream: #f5f9eb;
+  --color-ink: #231f20;
+  --color-site-panel: #fbfbfb;
+  --color-ink-muted: #595959;
+  --color-ink-soft: #6a6a6a; /* darkened from #848484 to pass 4.5:1 text contrast */
+  --color-site-line: #e6e6e6;
+
+  /* Semantic (shadcn) mappings */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-google-sans-flex), system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", monospace;
+  --font-heading: var(--font-sans);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+
+  /* Radii — Figma: inputs 16, cards 14, pricing 20, panels 30 */
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: 1.25rem;
+  --radius-3xl: 1.5rem;
+  --radius-site-card: 0.875rem; /* 14px feature/step cards */
+  --radius-site-panel: 1.875rem; /* 30px full-bleed section panels */
+
+  /* Motion */
+  --animate-marquee-y: marquee-y 32s linear infinite;
+  --animate-marquee-x: marquee-x 28s linear infinite;
+  --animate-float: float 14s ease-in-out infinite;
+  --animate-float-late: float 18s ease-in-out -7s infinite;
+  /* Duration and delay are set per cell inline, so only the curve lives here. */
+  --animate-cell-glow: cell-glow 10s ease-in-out infinite;
+  --animate-grid-sweep: grid-sweep 19s ease-in-out infinite;
+  --animate-wire: wire 5s linear infinite;
+  --animate-halo-breathe: halo-breathe 11s ease-in-out infinite;
+
+  @keyframes marquee-y {
+    from {
+      transform: translateY(0);
+    }
+    to {
+      transform: translateY(-50%);
+    }
+  }
+
+  @keyframes marquee-x {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+
+  @keyframes float {
+    0%,
+    100% {
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+    50% {
+      transform: translate3d(2rem, -1.5rem, 0) scale(1.08);
+    }
+  }
+
+  /* A grid cell lighting up. Asymmetric on purpose: it brightens quickly and
+     fades slowly, which reads as something registering rather than throbbing. */
+  @keyframes cell-glow {
+    0%,
+    100% {
+      opacity: 0.1;
+    }
+    18% {
+      opacity: 1;
+    }
+    55% {
+      opacity: 0.35;
+    }
+  }
+
+  /* Soft band crossing the grid, pausing at each end so it never feels
+     mechanical. Travels beyond both edges to avoid a visible entry/exit. */
+  @keyframes grid-sweep {
+    0% {
+      transform: translateX(-120%);
+    }
+    45%,
+    55% {
+      transform: translateX(190%);
+    }
+    100% {
+      transform: translateX(-120%);
+    }
+  }
+
+  /* Node travelling along an integration wire, from its tool tile to the hub.
+     The dash pattern is "0.01 400": a zero-length dash with a round linecap
+     renders as a dot, and 400 exceeds the longest wire (~358 box units) so
+     only one dot is ever on a wire at a time. Walking dashoffset from 400
+     down to 0 carries that dot forward across the whole path. */
+  @keyframes wire {
+    from {
+      stroke-dashoffset: 400;
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  /* Slow swell on the lime wash inside the innermost halo ring. */
+  @keyframes halo-breathe {
+    0%,
+    100% {
+      opacity: 0.75;
+      transform: translate3d(-50%, -50%, 0) scale(1);
+    }
+    50% {
+      opacity: 1;
+      transform: translate3d(-50%, -50%, 0) scale(1.06);
+    }
+  }
+}
+
+@theme {
+  /* ---- brand ------------------------------------------------------------ */
+  --color-pine: #0e3228;
+  --color-lime: #bfeb58;
+  --color-ink: #231f20;
+
+  /* ---- surfaces --------------------------------------------------------- */
+  /* `panel` is the card + sidebar fill; `page` is the content ground. */
+  --color-page: #ffffff;
+  --color-panel: #fafafa;
+  --color-well: #f1f1f1;
+
+  /* ---- lines ------------------------------------------------------------
+     `hairline` is the 6%-black stroke on every card, pill and the sidebar
+     edge. `rule` is the heavier divider between table rows and list items. */
+  --color-hairline: rgba(0, 0, 0, 0.06);
+  --color-rule: #ececec;
+  /* A cooler, heavier border than `hairline`. The workflow cards, the template
+     dialog and every combobox in the builder use it; the dashboard's panels do
+     not. Both come straight from the frames — not a duplicate. */
+  --color-edge: #e1e5eb;
+
+  /* ---- text ------------------------------------------------------------- */
+  --color-muted: #6d6d6d; /* KPI eyebrows, table headers (was #9f9f9f, 2.6:1; now 5.2:1 on white, 4.6:1 on surface) */
+  --color-subtle: #666666; /* caption under a big stat (was #878787; now 5.7:1) */
+  --color-placeholder: #606060; /* search field */
+  --color-slate: #5f6a7b; /* "Updated …" captions and dialog secondaries */
+  /* The breadcrumb's own grey. Close to `muted` but not it — the frames set the
+     two separately, so they stay separate rather than being talked into one. */
+  --color-crumb: #6a6a6a; /* was #929292 (3.1:1); now 5.4:1 */
+
+  /* ---- signal -----------------------------------------------------------
+     Each status has a saturated ink and a pale tint for the pill behind it.
+     Verdicts pair a tint + ink + glyph, never colour alone, so the activity
+     list stays readable to anyone who cannot separate the amber from the red. */
+  --color-positive: #27634d; /* deltas that are good news */
+  --color-uptime: #6fb801; /* uptime delta + "open queue" links */
+  --color-caution: #b7791f;
+  --color-caution-tint: #fbefd6;
+  --color-danger: #c0362c;
+  --color-danger-tint: #fbe5e2;
+  --color-pass-tint: #eaf7cd;
+  --color-inert: #6d6d6d; /* ink for a neutral/abandoned state */
+  --color-inert-tint: #ededed;
+
+  /* ---- interaction ------------------------------------------------------
+     Hover fills. Two, not one: a white surface darkens to `hover-light`, a
+     `panel` surface to `hover-panel`, or the hover is invisible on one of them. */
+  --color-hover-light: #f7f7f7;
+  --color-hover-panel: #f2f2f2;
+  --color-hover-sunken: #f5f5f5;
+  --color-icon-soft: #8c8c8c; /* faint glyphs (was #bdbdbd, 1.9:1; now 3.4:1, the bar for icons) */
+  --color-search-glyph: #7a7a7a; /* the search magnifier — darker so the field reads as substantial as the frame's */
+  --color-keycap-ink: #4d4d4d; /* the ⌘K keycap glyphs — dark, per the frame */
+
+  /* ---- gradients --------------------------------------------------------
+     The frame's two lime gradients, top to bottom. Declared here so the two
+     places that use them cannot drift apart. */
+  --gradient-feature: linear-gradient(180deg, #ffffff 0%, #bfeb58 100%);
+  --gradient-upgrade: linear-gradient(180deg, #bfeb58 0%, #f9f9f9 100%);
+
+  /* ---- chart ramp -------------------------------------------------------
+     One ordered green ramp, darkest first. Charts and the connection-type bar
+     both index into it, so a segment can never pick a colour that is off-brand
+     or ambiguous against its neighbour. */
+  --color-ramp-1: #0e3228;
+  --color-ramp-2: #1a4a3a;
+  --color-ramp-3: #27634d;
+  --color-ramp-4: #4a9a78;
+  --color-ramp-5: #6db494;
+  --color-ramp-6: #94ccb3;
+  --color-ramp-7: #bce2d2;
+
+  /* ---- type -------------------------------------------------------------
+     Named by role. Line heights are paired so a size change cannot leave a
+     stale leading behind. */
+  --text-micro: 11.28px; /* eyebrows, table cells, deltas, captions */
+  --text-micro--line-height: 15.04px;
+  /* Named `card`, not `panel`: `--color-panel` already exists, Tailwind
+     resolves the single `text-panel` utility against both namespaces, and the
+     COLOUR won — so every card heading silently rendered at the browser's
+     default 16px instead of 13.07px, invisibly, because a `text-pine` after it
+     masked the near-white fill. Second time this has bitten (see `--color-body`
+     above). A colour and a size may never share a name. */
+  --text-card: 13.07px; /* every card heading */
+  --text-card--line-height: 18.8px;
+  --text-body: 14px;
+  --text-body--line-height: 20px;
+  --text-nav: 16px;
+  --text-nav--line-height: 20px;
+  --text-search: 18px;
+  --text-search--line-height: 23px;
+  --text-org: 20px; /* topbar org name */
+  --text-org--line-height: 25px;
+  --text-h1: 22.56px;
+  --text-h1--line-height: 30.08px;
+  --text-stat: 28.2px; /* KPI + panel figures */
+  --text-stat--line-height: 33.85px;
+  --text-stat-lg: 33.75px; /* the one oversized figure (IP mismatch) */
+  --text-stat-lg--line-height: 37.6px;
+  --text-wordmark: 28.88px;
+
+  /* ---- metrics ----------------------------------------------------------
+     Sidebar 332 · topbar 72. The content column was 1068 (the Figma's 1440
+     canvas minus rail); widened to 1760 so the console fills modern/zoomed-out
+     screens instead of stranding a big margin — it still centres and caps for
+     ultra-wide. */
+  --spacing-rail: 332px;
+  --spacing-rail-item: 292px;
+  --spacing-topbar: 72px;
+  --spacing-content: 1760px;
+  --spacing-gutter: 20px;
+
+  --spacing-pad: 18.8px; /* card padding */
+  --spacing-row: 22.56px; /* between content rows */
+  --spacing-col: 15.04px; /* between cards in a row */
+  --spacing-stack: 11.28px; /* inside a card */
+  --spacing-tight: 7.52px;
+  --spacing-hair: 3.76px;
+
+  --radius-card: 16px;
+  --radius-panel: 18.8px; /* the lower half of the frame uses 18.8, not 16 */
+  --radius-well: 11.28px;
+  --radius-pill: 9999px;
+
+  /* ==========================================================================
+     APPLICANT FLOW — the hosted screens an end user sees, not the console.
+
+     A separate surface with its own ground (cream, not white), its own body
+     grey and its own scale: the frames are drawn 1:1, so these values are whole
+     numbers where the console's are fractional. Everything below is namespaced
+     `flow-*` where a console token of the same role already exists, so the two
+     systems cannot quietly borrow each other's values.
+     ========================================================================== */
+
+  /* ---- surfaces --------------------------------------------------------- */
+  --color-cream: #f5f9eb; /* the page behind the card */
+  --color-tile: #fbfbfb; /* option tiles, capture wells */
+  --color-step-idle: #f5f7fa; /* an un-reached step's disc */
+
+  /* ---- lines ------------------------------------------------------------
+     Three, and they are genuinely three: `divider` rules a panel, `card-line`
+     outlines a tile, `connector` draws the spine between step discs. */
+  --color-divider: #e1e5eb;
+  --color-card-line: #e9e9e9;
+  --color-connector: #cad5e2;
+  --color-step-ring: #d6d6d6;
+
+  /* ---- text -------------------------------------------------------------
+     The flow's body copy is a cool grey, not the console's neutral. Pine at a
+     fraction covers the rest (eyebrow 71%, lead 90%, label 82%) and is written
+     as `text-pine/71` at the call site so it stays tied to the brand colour. */
+  /* Named `quiet`, not `body`: `--text-body` already exists as the 14/20 size,
+     and Tailwind resolves one `text-body` utility against both namespaces —
+     the colour silently won and every `text-body` meant for sizing inherited
+     16px instead. Two tokens may not share a name across namespaces. */
+  --color-quiet: #5b6472;
+
+  /* ---- type -------------------------------------------------------------
+     Sizes the console has no equivalent for. `--text-body` (14/20) is shared;
+     `--text-read` is the same size at the frame's looser 22.75 leading, used
+     for paragraphs that run more than two lines. */
+  --text-eyebrow: 12px;
+  --text-eyebrow--line-height: 16px;
+  /* Stepper rail: an entry's name and the line under it. */
+  --text-step: 15px;
+  --text-step--line-height: 20px;
+  --text-caption: 13px;
+  --text-caption--line-height: 18px;
+  /* The opening screen (Desktop-1) only. Nothing else runs this large. */
+  --text-hero: 51.09px;
+  --text-hero--line-height: 53.64px;
+  --text-hero--letter-spacing: -1.28px;
+  --text-lead: 19.16px;
+  --text-lead--line-height: 29.8px;
+  --text-read: 14px;
+  --text-read--line-height: 22.75px;
+  --text-field: 16px;
+  --text-field--line-height: 20px;
+  --text-display: 30px;
+  --text-display--line-height: 36px;
+  --text-display--letter-spacing: -0.6px;
+  /* The frames are one desktop artboard and specify no small-screen size, but
+     30px runs a heading like "Enter the code we texted you" to three lines on
+     a 375px phone. A token rather than an arbitrary value, so the step down is
+     one number to change when a mobile frame does arrive. */
+  --text-display-sm: 24px;
+  --text-display-sm--line-height: 30px;
+  --text-display-sm--letter-spacing: -0.4px;
+  --text-mark: 21.6576px;
+
+  /* ---- metrics ----------------------------------------------------------
+     The card is 1257 = 381 aside + 873 content + the 3px it loses to rounding
+     in the frame. Widths are maxima; below `lg` the aside is dropped and the
+     content column goes fluid. */
+  --spacing-flow-card: 1257px;
+  --spacing-flow-aside: 381px;
+  --spacing-flow-content: 873px;
+  --spacing-flow-pad: 40px;
+  --spacing-aside-pad: 32px;
+
+  /* The one-time-code row: 405 wide, six 52px boxes on a 12px radius. */
+  --spacing-otp: 405px;
+  --spacing-otp-box: 52px;
+
+  --radius-flow: 40px;
+  --radius-tile: 16px;
+  --radius-box: 12px;
+  --radius-slab: 21.29px; /* the opening screen's three cards */
+
+  /* ---- elevation --------------------------------------------------------
+     The frame's 14.9 blur under the card, and the CTA's stacked pair. Tokens
+     rather than arbitrary values so the two places that lift a surface cannot
+     drift, and so no component has to carry a raw colour to cast a shadow. */
+  --shadow-flow: 0 4px 14.9px 0 rgb(14 50 40 / 0.06);
+  --shadow-cta:
+    0 1px 2px 0 rgb(14 50 40 / 0.1), 0 4px 12px 0 rgb(14 50 40 / 0.1);
+
+  /* ==========================================================================
+     VERIFICATIONS — the list (Desktop-26) and the nine-tab detail
+     (Desktop-33 · 51 · 52 · 53 · 54 · 55 · 56 · 57 · 58).
+
+     These frames are drawn on the console's 0.9401 column but their panel
+     internals use round numbers, so both scales appear. Only the values the
+     console has no equivalent for are added here.
+     ========================================================================== */
+
+  /* The one green that is not the brand's. The detail header's Approved pill
+     is drawn in it and nothing else is — a verdict that reads as "cleared"
+     rather than as "VeriSec". */
+  --color-approve: #198a00;
+  --color-approve-tint: #dff3e8;
+  /* Two lime washes, and they are genuinely two: `lime-tint` fills a pill,
+     `lime-wash` fills the NFC banner behind a pine disc. */
+  --color-lime-tint: #eefccd;
+  --color-lime-wash: #eef7d8;
+  /* The timeline's spine and the tab panel's vertical rule. Heavier than
+     `rule`, which would disappear at 2px against `panel`. */
+  --color-track: #d5d5d5;
+
+  /* The heading above a block inside a tab ("Key facts", "Documents"). Larger
+     than the dashboard's `panel` heading because these panels are wider. */
+  --text-section: 15.9px;
+  --text-section--line-height: 24px;
+  --text-section--letter-spacing: -0.32px;
+
+  --radius-shell: 20px; /* the detail's two outer cards */
+  --radius-tab: 9px; /* the tab strip */
+
+  /* ==========================================================================
+     API KEYS & PLAYGROUND — Desktop-44 · 45 · 46 · 47 · 48.
+     ========================================================================== */
+
+  /* The `test` env chip and the POST verb, both drawn on #e0e7ff. The frame
+     gives the fill but not the ink, so `info` is chosen to clear 4.5:1 on it
+     rather than guessed at — a verb nobody can read is not a verb. */
+  --color-info: #3730a3;
+  --color-info-tint: #e0e7ff;
+
+  /* The active tab's fill: white lifting into a lime wash. A third lime
+     gradient and genuinely not the other two — `feature` runs to full lime and
+     `upgrade` runs the other way. Applied as
+     `bg-[image:var(--gradient-tab)]`; the `bg-(--gradient-tab)` shorthand
+     resolves to background-COLOR and the gradient silently disappears. */
+  --gradient-tab: linear-gradient(180deg, #ffffff 0%, #e8f7c5 100%);
+
+  /* ---- the response block ----------------------------------------------
+     The console's one dark surface. Pine-derived rather than a stock editor
+     black, and coloured off the brand ramp rather than the frame's generic
+     blue-and-orange editor theme — this block sits six inches from a lime
+     button and has to look like it belongs to the same product. */
+  --color-code-bg: #0a231c;
+  --color-code-chrome: #12352b; /* the block's header bar */
+  --color-code-ink: #cfe0d8; /* punctuation and anything untokenised */
+  --color-code-key: #bfeb58;
+  --color-code-string: #f2c98a;
+  --color-code-number: #9fdcc2;
+  --color-code-atom: #7fc4ff; /* true / false / null */
+
+  /* ---- JSON in the API Playground ---------------------------------------
+     Four clearly separate hues, so a key never reads like its value, and the
+     structure (braces, commas) dimmed so the data is what you see first.
+     Separate from `code-*`, which other code views already rely on. */
+  --color-json-key: #bfeb58; /* keys, the brand lime */
+  --color-json-string: #ffb07c; /* string values, warm orange */
+  --color-json-number: #7cc8ff; /* numbers, sky */
+  --color-json-atom: #cfa8ff; /* true / false / null and keywords, violet */
+  --color-json-punct: #8fa89e; /* braces, brackets, commas, colons */
+  --color-json-guide: rgb(207 224 216 / 0.1); /* indent guides */
+
+  /* ==========================================================================
+     WEBHOOKS · USAGE & BILLING · TEAM — Desktop-23 · 24 · 25 · 34
+     ========================================================================== */
+
+  /* The three confirm dialogs commit something a person cannot take back, so
+     their buttons are SOLID rather than the tinted pills used everywhere else
+     — the weight is the warning. Separate from `danger`/`caution`/`approve`,
+     which are the pale statuses a chip is drawn in and would be unreadable as
+     a filled button's ground. */
+  --color-destructive: #e5484d;
+  --color-affirm: #16a34a;
+  --color-warn: #eab308;
+
+  /* Each dialog's ground: its own colour at the top, falling to white before
+     the copy starts. Written as tokens so no component carries a raw hex. */
+  --gradient-confirm-destructive: linear-gradient(180deg, #fdf1f1 0%, #ffffff 46%);
+  --gradient-confirm-affirm: linear-gradient(180deg, #eefaf1 0%, #ffffff 46%);
+  --gradient-confirm-warn: linear-gradient(180deg, #fdf8ea 0%, #ffffff 46%);
+
+  /* The invoice row. Between `well` and `panel`, and the frame sets it apart
+     from both. */
+  --color-invoice: #f0f0f0;
+  /* The pagination bar's rule — lighter than `edge`, which would read as a
+     second table border directly under the last row. */
+  --color-pager-line: #e9eaeb;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee-y,
+  .animate-marquee-x,
+  .animate-float,
+  .animate-float-late,
+  .animate-cell-glow,
+  .animate-grid-sweep,
+  .animate-wire,
+  .animate-halo-breathe {
+    animation: none;
+  }
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #0e3228;
+  --card: #ffffff;
+  --card-foreground: #0e3228;
+  --popover: #ffffff;
+  --popover-foreground: #0e3228;
+  --primary: #bfeb58;
+  --primary-foreground: #0e3228;
+  --secondary: #0e3228;
+  --secondary-foreground: #ffffff;
+  --muted: #f2f2f2;
+  --muted-foreground: #595959;
+  --accent: #eaf7cd;
+  --accent-foreground: #0e3228;
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: #e6e6e6;
+  --input: rgb(64 64 64 / 0.1);
+  --ring: #bfeb58;
+  --radius: 0.75rem;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply scroll-smooth font-sans antialiased;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "ss01";
+  }
+  ::selection {
+    @apply bg-lime text-pine;
+  }
+}
+
+@layer utilities {
+  /* Blurred blob + faint grid backdrop used by hero panels */
+  /* Hero background grid. Figma shows this layer reading clearly behind the
+     headline; at the original 0.035 alpha it was a ~8/255 delta against the
+     #F2F2F2 surface, which the lime blobs then washed out entirely. 0.09
+     lands around a 21/255 delta: legible as structure, still background. */
+  .bg-grid {
+    background-image:
+      linear-gradient(to right, rgb(14 50 40 / 0.09) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(14 50 40 / 0.09) 1px, transparent 1px);
+    background-size: 72px 72px;
+  }
+  /* Same grid for dark panels (the pine Products catalog). */
+  .bg-grid-dark {
+    background-image:
+      linear-gradient(to right, rgb(255 255 255 / 0.07) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(255 255 255 / 0.07) 1px, transparent 1px);
+    background-size: 72px 72px;
+  }
+  /* Dissolve the grid toward every edge. Figma fades this plane out rather
+     than letting it stop at a hard border, so the ellipse is deliberately
+     under 100%: the falloff has to be visible inside the box, not outside it. */
+  .mask-grid-edges {
+    mask-image: radial-gradient(
+      ellipse 80% 82% at 50% 45%,
+      black 22%,
+      rgb(0 0 0 / 0.6) 58%,
+      transparent 94%
+    );
+  }
+  .mask-fade-y {
+    mask-image: linear-gradient(
+      to bottom,
+      transparent,
+      black 12%,
+      black 88%,
+      transparent
+    );
+  }
+  .mask-fade-b {
+    mask-image: linear-gradient(to bottom, black 55%, transparent);
+  }
+}
+
+
+/* ============================================================================
+   Base
+   ============================================================================ */
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: light;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--color-page);
+  color: var(--color-pine);
+  font-family: var(--font-google-sans-flex), "Google Sans Flex", system-ui, sans-serif;
+  /* Google Sans Flex is a variable face — let it interpolate real weights
+     instead of letting the browser smear a synthetic bold over them. */
+  font-synthesis-weight: none;
+  /* A touch of grade: Google Sans Flex's GRAD axis thickens strokes without changing any letter's
+     width, so text reads sturdier (especially at 11-14px on Windows) and no layout moves. */
+  font-variation-settings: "GRAD" 30;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+input,
+textarea,
+button,
+select {
+  font-family: inherit;
+  /* the UA's font shorthand on controls would drop the body's grade */
+  font-variation-settings: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-pine);
+  outline-offset: 2px;
+}
+
+/* Form controls carry their own styled focus ring, so the global pine outline
+   above must never land on them — offset 2px outside the border it read as an
+   ugly black box around every input. This is unlayered + more specific than the
+   rule above, so it wins over it AND over any `outline-none` utility. */
+input:focus,
+input:focus-visible,
+textarea:focus,
+textarea:focus-visible,
+select:focus,
+select:focus-visible {
+  outline: none;
+}
+
+/* Tabular figures wherever numbers are stacked in a column, so digits line up
+   between rows instead of shimmying by a fraction of an em. */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================================================
+   Applicant flow — backdrop and motion.
+
+   All of it is CSS. Not one screen in the flow needs `"use client"` to animate,
+   which is the point: an entrance built out of `@keyframes` plus a per-element
+   `--vs-d` delay costs no JavaScript, runs before hydration would have finished,
+   and cannot desynchronise from the render.
+   ============================================================================ */
+
+/* The flowing line field. Generated by `scripts/backdrop.mjs` into
+   public/backdrop.svg — see that file's header for why it is not inlined.
+   `fixed` so the figure stays put while a long screen scrolls over it. */
+.vs-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background: url("/backdrop.svg") center / cover no-repeat;
+  /* The cream belongs to the PAGE, not to this element — see `.vs-ground`. The
+     SVG carries its own opaque neutral ground, so stacking cream underneath it
+     here would achieve nothing; multiplying it over the page's cream is what
+     actually tints both the ground and the lines, and is why the lime reads
+     warm rather than chalky. */
+  mix-blend-mode: multiply;
+  /* Static on purpose. The old 64s infinite drift re-rasterized this 127-path
+     full-screen SVG and re-ran the blend plus the card's backdrop blur on every
+     frame, which made the whole flow lag and fought the camera and detector
+     for the GPU. Painted once, it costs nothing after the first frame. */
+  animation: none;
+  contain: strict;
+}
+
+/* The cream the backdrop multiplies onto. On the wrapper rather than `body` so
+   the console, which shares this stylesheet, keeps its own white ground. */
+.vs-ground {
+  background: var(--color-cream);
+}
+
+@keyframes vs-drift {
+  from {
+    transform: scale(1.06) translate3d(-0.9%, -0.6%, 0);
+  }
+  to {
+    transform: scale(1.06) translate3d(0.9%, 0.6%, 0);
+  }
+}
+
+/* Entrance. Set `--vs-d` on a child to stagger it down the screen.
+   Kept SHORT: this animation re-runs on every step navigation, so a long one
+   makes each page feel like it slowly assembles (reads as lag). */
+.vs-in {
+  animation: vs-rise 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--vs-d, 0ms);
+}
+
+@keyframes vs-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* The card itself: a slightly longer, slightly larger move than its contents,
+   so the panel arrives first and the copy settles into it. */
+.vs-card-in {
+  animation: vs-card 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes vs-card {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 26px, 0) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Step-to-step. Once the flow's first entrance has played (`FlowEntry` sets
+   `data-vs-entered` on <html>), Continue must feel like turning a page, not a
+   reload: the blurred card and the step rail stay still, and only the new
+   step's content fades in, quickly and with no stagger. Opacity only, so the
+   compositor does it without repainting the blur. */
+:root[data-vs-entered] .vs-in {
+  animation: vs-fade 170ms ease-out both;
+  animation-delay: 0ms;
+}
+
+:root[data-vs-entered] .vs-card-in,
+:root[data-vs-entered] aside .vs-in,
+:root[data-vs-entered] .vs-fill {
+  animation: none;
+}
+
+/* Page turn. Continue slides the new step in from the right, Back from the left
+   (`FlowEntry` sets `data-vs-dir`). The whole step moves as one sheet, no
+   stagger; the tenant bar, step rail and blurred card stay still. Transform and
+   opacity only, so it runs on the compositor. The stage clips sideways so the
+   incoming sheet never flashes a horizontal scrollbar. */
+.vs-stage {
+  overflow-x: clip;
+}
+
+:root[data-vs-entered][data-vs-dir="fwd"] .vs-stage .vs-in {
+  animation: vs-slide-fwd 340ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: 0ms;
+}
+
+:root[data-vs-entered][data-vs-dir="back"] .vs-stage .vs-in {
+  animation: vs-slide-back 340ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: 0ms;
+}
+
+:root[data-vs-entered] .vs-stage header.vs-in {
+  animation: none;
+}
+
+@keyframes vs-slide-fwd {
+  from {
+    opacity: 0;
+    transform: translate3d(72px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes vs-slide-back {
+  from {
+    opacity: 0;
+    transform: translate3d(-72px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes vs-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Respect the OS "reduce motion" setting: no entrance staggers, no perpetual
+   background drift, everything lands instantly. */
+@media (prefers-reduced-motion: reduce) {
+  .vs-in,
+  .vs-card-in,
+  .vs-fill {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+  }
+  .vs-backdrop {
+    animation: none !important;
+  }
+}
+
+/* The current step's sub-progress bar, filling to its own width on arrival. */
+.vs-fill {
+  animation: vs-fill 450ms cubic-bezier(0.22, 1, 0.36, 1) 120ms both;
+}
+
+@keyframes vs-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* "Waiting for your phone…" — a three-dot cycle rather than a spinner, because
+   the wait is genuinely open-ended and a spinner implies a known duration. */
+.vs-pulse {
+  animation: vs-pulse 1.4s ease-in-out infinite;
+  animation-delay: var(--vs-d, 0ms);
+}
+
+@keyframes vs-pulse {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Toast countdown bar: shrinks left-to-right over the toast's lifetime. */
+@keyframes toast-progress {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+/* Anyone who has asked for less movement gets the layout and none of it. The
+   entrance keyframes are `both`-filled, so cancelling them would leave elements
+   stuck at opacity 0 — they are reset here rather than merely stopped. */
+@media (prefers-reduced-motion: reduce) {
+  .vs-backdrop,
+  .vs-in,
+  .vs-card-in,
+  .vs-fill,
+  .vs-pulse {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ============================================================================
+   Range input — the builder's Trust Score threshold.
+
+   Native <input type="range"> so it is draggable, arrow-key operable and
+   announced for free; only the chrome is restyled. The two vendor blocks cannot
+   be combined into one selector list — a browser drops the whole rule when it
+   meets a pseudo-element it does not know.
+   ============================================================================ */
+
+.vs-slider {
+  appearance: none;
+  height: 18px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.vs-slider::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-pine) 11%, transparent);
+}
+.vs-slider::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-pine) 11%, transparent);
+}
+
+.vs-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  margin-top: -6px; /* centres an 18px thumb on a 6px track */
+  border-radius: 999px;
+  background: var(--color-pine);
+  border: 1px solid var(--color-lime);
+}
+.vs-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--color-pine);
+  border: 1px solid var(--color-lime);
+}
+
+.vs-slider:focus-visible {
+  outline: 2px solid var(--color-pine);
+  outline-offset: 4px;
+}
+
+/*
+ * Touch screens: iPhones zoom the whole page in when a form field with text under 16px is tapped, which feels like
+ * the page jumping instead of responding. Any field styled with a small text size gets 16px on touch screens.
+ * Unlayered on purpose, so it wins over the layered Tailwind size utilities; fields with larger text are untouched.
+ */
+@media (pointer: coarse) {
+  :is(input, select, textarea):is(
+      .text-xs,
+      .text-sm,
+      [class*="text-[10px]"],
+      [class*="text-[11px]"],
+      [class*="text-[12px]"],
+      [class*="text-[12.5px]"],
+      [class*="text-[13px]"],
+      [class*="text-[13.5px]"],
+      [class*="text-[14px]"],
+      [class*="text-[14.5px]"],
+      [class*="text-[15px]"]
+    ) {
+    font-size: 16px;
+  }
+}
