@@ -1,0 +1,178 @@
+name: verisec-platform
+
+# Phase-1 auth: Zitadel only, pointed at the EXISTING host Postgres.
+# Secrets come from ./.env (gitignored). Bring up:  docker compose up -d
+#
+# Zitadel uses the `postgres` admin to create its own `zitadel` database on first
+# boot, then serves the console at http://localhost:8080/ui/console.
+
+services:
+  zitadel:
+    image: ghcr.io/zitadel/zitadel:latest
+    container_name: verisec-zitadel
+    restart: unless-stopped
+    command: start-from-init --masterkey "${ZITADEL_MASTERKEY}" --tlsMode disabled
+    environment:
+      # ---- external URL (local, plain http) ----
+      ZITADEL_EXTERNALSECURE: "false"
+      ZITADEL_EXTERNALDOMAIN: "${ZITADEL_EXTERNALDOMAIN}"
+      ZITADEL_EXTERNALPORT: "${ZITADEL_EXTERNALPORT}"
+      ZITADEL_TLS_ENABLED: "false"
+      # ---- connect to the host Postgres (host.docker.internal from the container) ----
+      ZITADEL_DATABASE_POSTGRES_HOST: "${PGHOST_FROM_CONTAINER}"
+      ZITADEL_DATABASE_POSTGRES_PORT: "${PGPORT}"
+      ZITADEL_DATABASE_POSTGRES_DATABASE: "zitadel"
+      ZITADEL_DATABASE_POSTGRES_USER_USERNAME: "${PGUSER}"
+      ZITADEL_DATABASE_POSTGRES_USER_PASSWORD: "${PGPASSWORD}"
+      ZITADEL_DATABASE_POSTGRES_USER_SSL_MODE: "disable"
+      ZITADEL_DATABASE_POSTGRES_ADMIN_USERNAME: "${PGUSER}"
+      ZITADEL_DATABASE_POSTGRES_ADMIN_PASSWORD: "${PGPASSWORD}"
+      ZITADEL_DATABASE_POSTGRES_ADMIN_SSL_MODE: "disable"
+      # ---- first admin (login: zitadel-admin@zitadel.localhost) ----
+      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORD: "${ZITADEL_ADMIN_PASSWORD}"
+      # ---- service account for the NestJS API: mints a PAT to /machinekey/pat.txt ----
+      ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_USERNAME: "verisec-api"
+      ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_NAME: "VeriSec API"
+      ZITADEL_FIRSTINSTANCE_ORG_MACHINE_PAT_EXPIRATIONDATE: "2031-01-01T00:00:00Z"
+      ZITADEL_FIRSTINSTANCE_PATPATH: "/machinekey/pat.txt"
+    ports:
+      - "8088:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./zitadel/machinekey:/machinekey
+
+  # Document store for verification files (ID photos, selfies, proof-of-address). Objects are
+  # the browser-encrypted JWE (only the processing host can decrypt them) AND MinIO encrypts
+  # every object again at rest (SSE with MINIO_KMS_SECRET_KEY). Published on 127.0.0.1 only.
+  minio:
+    image: minio/minio:latest
+    container_name: verisec-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: "${MINIO_ROOT_USER}"
+      MINIO_ROOT_PASSWORD: "${MINIO_ROOT_PASSWORD}"
+      MINIO_KMS_SECRET_KEY: "${MINIO_KMS_SECRET_KEY}"
+      MINIO_BROWSER_REDIRECT: "off"
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - ./minio/data:/data
+
+  # Verification records database. Separate from the shared system Postgres on purpose:
+  # TLS 1.3 only (plain connections rejected), SCRAM-SHA-256 passwords, 127.0.0.1 only.
+  # Personal fields inside it are additionally encrypted per record by the Console (OpenBao keys).
+  kycdb:
+    image: postgres:16-alpine
+    container_name: verisec-kycdb
+    restart: unless-stopped
+    entrypoint: ["sh", "/start/start.sh"]
+    environment:
+      POSTGRES_USER: "verisec_kyc"
+      POSTGRES_PASSWORD: "${KYC_DB_PASSWORD}"
+      POSTGRES_DB: "verisec_kyc"
+      POSTGRES_INITDB_ARGS: "--auth-local=scram-sha-256 --auth-host=scram-sha-256"
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - ./kycdb/data:/var/lib/postgresql/data
+      - ./kycdb/start.sh:/start/start.sh:ro
+      - ./pki/localhost.crt:/certs/localhost.crt:ro
+      - ./pki/localhost.key:/certs/localhost.key:ro
+
+  # Key management + encryption as a service. The Console API encrypts personal data
+  # (KYC and proof-of-address reports) through the Transit engine; keys never leave here.
+  # Published on 127.0.0.1 only. Starts sealed: run infra/openbao/unseal.ps1 after a restart.
+  openbao:
+    image: openbao/openbao:2.2
+    container_name: verisec-openbao
+    restart: unless-stopped
+    command: server -config=/openbao/config/openbao.hcl
+    environment:
+      BAO_ADDR: "http://127.0.0.1:8200"
+    ports:
+      - "127.0.0.1:8200:8200"
+    volumes:
+      - ./openbao/config:/openbao/config:ro
+      - ./openbao/data:/openbao/data
+    healthcheck:
+      # 200 = unsealed, 503 = sealed; either way the server itself is up
+      test: ["CMD-SHELL", "wget -q -O /dev/null -T 3 'http://127.0.0.1:8200/v1/sys/health?sealedcode=200&uninitcode=200' || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ---- Webhooks: outbound event delivery (Console API /api/webhooks) ----
+  # The delivery server signs every request (Standard Webhooks: webhook-id, webhook-timestamp,
+  # webhook-signature v1 HMAC-SHA256 per endpoint secret), retries with backoff and keeps the
+  # attempt log. It has its own Postgres and queue; all three are published on 127.0.0.1 only.
+  svix-db:
+    image: postgres:16-alpine
+    container_name: verisec-svix-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: "svix"
+      POSTGRES_PASSWORD: "${SVIX_DB_PASSWORD}"
+      POSTGRES_DB: "svix"
+      POSTGRES_INITDB_ARGS: "--auth-local=scram-sha-256 --auth-host=scram-sha-256"
+    ports:
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - ./svix-db/data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U svix -d svix -h 127.0.0.1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Delivery queue + cache (idempotency keys). Append-only file so a restart keeps queued deliveries.
+  valkey:
+    image: valkey/valkey:8-alpine
+    container_name: verisec-valkey
+    restart: unless-stopped
+    environment:
+      VALKEY_PASSWORD: "${SVIX_REDIS_PASSWORD}"
+    command: ["sh", "-c", "exec valkey-server --appendonly yes --requirepass \"$$VALKEY_PASSWORD\""]
+    ports:
+      - "127.0.0.1:6380:6379"
+    volumes:
+      - ./valkey/data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "valkey-cli -a \"$$VALKEY_PASSWORD\" --no-auth-warning ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  svix:
+    # the official image with our own User-Agent on deliveries (see svix/Dockerfile)
+    build: ./svix
+    image: verisec/svix-server:1.101.0-vs1
+    container_name: verisec-svix
+    restart: unless-stopped
+    environment:
+      WAIT_FOR: "true"
+      SVIX_JWT_SECRET: "${SVIX_JWT_SECRET}"
+      SVIX_MAIN_SECRET: "${SVIX_MAIN_SECRET}"
+      SVIX_DB_DSN: "postgresql://svix:${SVIX_DB_PASSWORD}@svix-db:5432/svix"
+      SVIX_REDIS_DSN: "redis://:${SVIX_REDIS_PASSWORD}@valkey:6379"
+      SVIX_QUEUE_TYPE: "redis"
+      SVIX_CACHE_TYPE: "redis"
+      # Standard Webhooks header names (webhook-*), not the vendor's own prefix.
+      SVIX_WHITELABEL_HEADERS: "true"
+      # https-only for live endpoints is enforced by the Console API (test endpoints may use http).
+      SVIX_ENDPOINT_HTTPS_ONLY: "false"
+      # Private and loopback addresses are blocked unless listed here. Production: leave unset (= []).
+      # Local dev .env allows only Docker Desktop's host alias, so test endpoints on this computer work.
+      SVIX_WHITELIST_SUBNETS: "${SVIX_WHITELIST_SUBNETS:-[]}"
+      SVIX_LOG_LEVEL: "info"
+    ports:
+      - "127.0.0.1:8071:8071"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      svix-db:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy

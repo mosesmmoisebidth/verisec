@@ -1,0 +1,56 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+**/__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Build output
+dist/
+build/
+out/
+.next/
+.turbo/
+*.tsbuildinfo
+
+# Secrets & environment
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+*.cer
+*.pfx
+*.p12
+
+# Infra runtime data / state
+backend/infra/minio/
+backend/infra/pki/
+backend/infra/certs/
+backend/infra/zitadel/
+backend/infra/svix-db/
+backend/infra/kycdb/
+backend/infra/valkey/
+backend/infra/openbao/
+**/data/
+
+# Compiled / native artifacts
+*.so
+*.dll
+*.exe
+*.onnx
+*.tflite
+
+# Large vendored assets (served at runtime, not in VCS)
+frontend/public/video/
+frontend/public/face/
+frontend/public/ort/
+frontend/public/models/
+
+# Logs & scratch
+*.log
+*.tgz
+*.bak
+*.bak-*
