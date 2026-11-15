@@ -1,0 +1,45 @@
+import {
+  ArrowLeftRight,
+  Bitcoin,
+  Briefcase,
+  Building2,
+  Car,
+  Dices,
+  GraduationCap,
+  HandCoins,
+  HeartHandshake,
+  HeartPulse,
+  House,
+  Landmark,
+  Plane,
+  Scale,
+  ShieldCheck,
+  ShoppingBag,
+  Smartphone,
+  Wallet,
+  type LucideIcon,
+} from "lucide-react";
+
+import type { IndustryIcon } from "@/config/industries";
+
+/** The icon for each industry, shared by the Industries dropdown and the Industries page. */
+export const industryIcons: Record<IndustryIcon, LucideIcon> = {
+  landmark: Landmark,
+  wallet: Wallet,
+  bitcoin: Bitcoin,
+  "hand-coins": HandCoins,
+  "shield-check": ShieldCheck,
+  dices: Dices,
+  smartphone: Smartphone,
+  "shopping-bag": ShoppingBag,
+  briefcase: Briefcase,
+  car: Car,
+  plane: Plane,
+  house: House,
+  "heart-pulse": HeartPulse,
+  "graduation-cap": GraduationCap,
+  building: Building2,
+  "heart-handshake": HeartHandshake,
+  "arrow-left-right": ArrowLeftRight,
+  scale: Scale,
+};
