@@ -1,0 +1,1 @@
+{"object":"card_number","status":"partial","issue_code":"luhn_failed","issue":"The number failed its checksum, so a digit was probably misread. Try again with less glare.","processing_ms":1583,"number":"4000123456789010","first6":"400012","last4":"9010","length":16,"network":"Visa","luhn_valid":false,"scheme_valid":false,"confidence":88.3}
